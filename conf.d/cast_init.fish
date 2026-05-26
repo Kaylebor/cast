@@ -3,28 +3,11 @@
 # _cast_install / _cast_update / _cast_uninstall are Fisher event hooks.
 
 # --- .gitignore block management ---
-function __cast_gitignore_remove --description "Remove the cast block from .gitignore"
-    set -l gitignore $__fish_config_dir/.gitignore
-    not test -f $gitignore; and return
-    sed -i '' '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
-    or sed -i '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
-end
-
-function __cast_gitignore_sync --description "Ensure cast block in .gitignore is current"
+function __cast_gitignore_sync --description "Replace or append the cast block in .gitignore"
     set -l gitignore $__fish_config_dir/.gitignore
     not test -f $gitignore; and return
 
-    # If both delimiters exist, remove the block unconditionally (not via sed)
-    set -l has_start (grep -qxF "# >>> cast managed" $gitignore 2>/dev/null; echo $status)
-    set -l has_end   (grep -qxF "# <<< cast managed" $gitignore 2>/dev/null; echo $status)
-
-    if test "$has_start" -eq 0 -a "$has_end" -eq 0
-        # Block exists — replace it. First remove old block...
-        sed -i '' '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
-        or sed -i '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
-    end
-
-    # ...then append fresh block
+    set -l tmp (mktemp)
     printf '%s\n' '# >>> cast managed' \
         'conf.d/cast_init.fish' \
         'conf.d/cast_user_keybinds.fish' \
@@ -37,7 +20,24 @@ function __cast_gitignore_sync --description "Ensure cast block in .gitignore is
         'functions/prompts/' \
         'cast/prompts/' \
         'functions/_cast_user_*.fish' \
-        '# <<< cast managed' >>$gitignore
+        '# <<< cast managed' >$tmp
+
+    if grep -qFx '# >>> cast managed' $gitignore 2>/dev/null
+        # Block exists: sed-replace in place. Append replacement at start line, delete range.
+        sed -i '' -e '/^# >>> cast managed$/,/^# <<< cast managed$/{
+            /^# >>> cast managed$/r '$tmp'
+            d
+        }' $gitignore 2>/dev/null
+        or sed -i -e '/^# >>> cast managed$/,/^# <<< cast managed$/{
+            /^# >>> cast managed$/r '$tmp'
+            d
+        }' $gitignore 2>/dev/null
+    else
+        printf '\n' >>$gitignore
+        cat $tmp >>$gitignore
+    end
+
+    rm $tmp
 end
 
 # --- Install: templates, defaults, .gitignore sync ---
@@ -86,15 +86,19 @@ function _cast_install --on-event cast_init_install
     echo "cast: installed. Set OPENAI_API_KEY or configure a custom provider. See https://github.com/Kaylebor/cast#setup"
 end
 
-# --- Update: sync .gitignore only, then notify ---
+# --- Update: sync .gitignore only ---
 function _cast_update --on-event cast_init_update
     __cast_gitignore_sync
     echo "cast: updated. Review provider changes at https://github.com/Kaylebor/cast"
 end
 
-# --- Uninstall: remove block, erase universal variables ---
+# --- Uninstall: remove block ---
 function _cast_uninstall --on-event cast_init_uninstall
-    __cast_gitignore_remove
+    set -l gitignore $__fish_config_dir/.gitignore
+    if test -f $gitignore
+        sed -i '' '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
+        or sed -i '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
+    end
     set -e cast_complete_provider 2>/dev/null
     set -e cast_explain_provider 2>/dev/null
 end
