@@ -2,133 +2,88 @@
 # Runs on every shell startup for prompt autogen.
 # _cast_install / _cast_update / _cast_uninstall are Fisher event hooks.
 
-# --- Shared utilities for .gitignore block management ---
-function __cast_gitignore_remove --description "Remove the cast ignore block from ~/.config/fish/.gitignore"
+# --- .gitignore block management ---
+function __cast_gitignore_remove --description "Remove the cast block from .gitignore"
     set -l gitignore $__fish_config_dir/.gitignore
     if not test -f $gitignore
         return
     end
-
-    set -l block_start "# >>> cast managed"
-    set -l block_end   "# <<< cast managed"
-
-    set -l has_start (grep -n -F $block_start $gitignore 2>/dev/null | head -1)
-    set -l has_end   (grep -n -F $block_end   $gitignore 2>/dev/null | head -1)
-
-    if test -z "$has_start" -o -z "$has_end"
-        return
-    end
-
-    set -l start_line (echo $has_start | cut -d: -f1)
-    set -l end_line   (echo $has_end   | cut -d: -f1)
-
-    begin
-        sed -i '' "$start_line,$end_line"d $gitignore 2>/dev/null
-    end
-    or sed -i "$start_line,$end_line"d $gitignore 2>/dev/null
+    sed -i '' '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
+    or sed -i '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
 end
 
-function __cast_gitignore_sync --description "Synchronize the cast ignore block in ~/.config/fish/.gitignore"
+function __cast_gitignore_sync --description "Ensure cast block in .gitignore is current"
     set -l gitignore $__fish_config_dir/.gitignore
     if not test -f $gitignore
         return
     end
 
     set -l block_start "# >>> cast managed"
-    set -l block_end   "# <<< cast managed"
+    set -l block_body "conf.d/cast_init.fish
+conf.d/cast_user_keybinds.fish
+functions/__cast_*.fish
+functions/cast_complete.fish
+functions/cast_explain.fish
+functions/cast_codify.fish
+functions/cast_prompt.fish
+functions/__cast_openai_compat_chat.fish
+functions/prompts/
+cast/prompts/
+functions/_cast_user_*.fish"
+    set -l block_end "# <<< cast managed"
 
-    set -l block \
-        $block_start \
-        "conf.d/cast_init.fish" \
-        "conf.d/cast_user_keybinds.fish" \
-        "functions/__cast_*.fish" \
-        "functions/cast_complete.fish" \
-        "functions/cast_explain.fish" \
-        "functions/cast_codify.fish" \
-        "functions/cast_prompt.fish" \
-        "functions/__cast_openai_compat_chat.fish" \
-        "functions/prompts/" \
-        "cast/prompts/" \
-        "functions/_cast_user_*.fish" \
-        $block_end
-
-    # Check if block already exists by start+end delimiter
-    set -l has_start (grep -n -F $block_start $gitignore 2>/dev/null | head -1)
-    set -l has_end   (grep -n -F $block_end   $gitignore 2>/dev/null | head -1)
-
-    if test -n "$has_start" -a -n "$has_end"
-        # Block exists: extract current content between delimiters
-        set -l start_line (echo $has_start | cut -d: -f1)
-        set -l end_line   (echo $has_end   | cut -d: -f1)
-
-        # Read existing lines (excluding delimiters)
-        set -l existing (sed -n (math "$start_line + 1"),(math "$end_line - 1")p $gitignore 2>/dev/null)
-
-        # Compare with expected block (excluding delimiters)
-        set -l expected (printf '%s\n' $block[2..-2])
-        if test "$existing" = "$expected"
-            # Block matches — nothing to do
-            return
-        end
-
-        # Block mismatched — replace it
-        # Delete old block (start through end line)
-        begin
-            sed -i '' "$start_line,$end_line"d $gitignore 2>/dev/null
-        end
-        or sed -i "$start_line,$end_line"d $gitignore 2>/dev/null
+    # If old block exists, remove it (range delete: start through end)
+    if grep -qF $block_start $gitignore 2>/dev/null
+        sed -i '' '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
+        or sed -i '/# >>> cast managed/,/# <<< cast managed/d' $gitignore 2>/dev/null
     end
 
-    # Ensure trailing newline before appending
+    # Ensure file ends with a single newline before appending
     set -l last (tail -c 1 $gitignore | string collect -N)
     if not string match -q "\n" -- $last
         printf '\n' >>$gitignore
     end
 
-    # Append block
-    for line in $block
-        printf '%s\n' $line >>$gitignore
-    end
+    # Append block as raw text
+    printf '%s\n%s\n%s\n' $block_start $block_body $block_end >>$gitignore
 end
 
-# --- Install-time: create templates, set provider defaults, sync .gitignore ---
+# --- Install: templates, defaults, .gitignore sync ---
 function _cast_install --on-event cast_init_install
     set -l user_dir $__fish_config_dir/cast/prompts
-    if not test -d $user_dir
-        mkdir -p $user_dir
-    end
+    test -d $user_dir; or mkdir -p $user_dir
 
     set -l template_complete $__fish_config_dir/functions/_cast_user_complete.fish
     if not test -f $template_complete
-        echo '# cast default completion provider' >$template_complete
-        echo '# You own this file; cast will never overwrite it.' >>$template_complete
-        echo '# Swap __cast_openai_complete for any other built-in or your own function.' >>$template_complete
-        echo '' >>$template_complete
-        echo 'function _cast_user_complete --argument input' >>$template_complete
-        echo '    __cast_openai_complete $input' >>$template_complete
-        echo 'end' >>$template_complete
+        echo '# cast default completion provider
+# You own this file; cast will never overwrite it.
+# Swap __cast_openai_complete for any other built-in or your own function.
+
+function _cast_user_complete --argument input
+    __cast_openai_complete $input
+end' >$template_complete
     end
 
     set -l template_explain $__fish_config_dir/functions/_cast_user_explain.fish
     if not test -f $template_explain
-        echo '# cast default explanation provider' >$template_explain
-        echo '# You own this file; cast will never overwrite it.' >>$template_explain
-        echo '' >>$template_explain
-        echo 'function _cast_user_explain --argument input' >>$template_explain
-        echo '    __cast_openai_explain $input' >>$template_explain
-        echo 'end' >>$template_explain
+        echo '# cast default explanation provider
+# You own this file; cast will never overwrite it.
+
+function _cast_user_explain --argument input
+    __cast_openai_explain $input
+end' >$template_explain
     end
 
     set -l keybinds $__fish_config_dir/conf.d/cast_user_keybinds.fish
     if not test -f $keybinds
-        echo '# cast user keybinds' >$keybinds
-        echo '# You own this file; cast will never overwrite it.' >>$keybinds
-        echo '# Change the bindings below or remove this file entirely.' >>$keybinds
-        echo '' >>$keybinds
-        echo 'status is-interactive; and begin' >>$keybinds
-        echo "    bind \\cp '__cast_keybind_complete'" >>$keybinds
-        echo "    bind \\ce '__cast_keybind_explain'" >>$keybinds
-        echo 'end' >>$keybinds
+        printf '%s\n' '# cast user keybinds' \
+            '# You own this file; cast will never overwrite it.' \
+            '# Change the bindings below or remove this file entirely.' \
+            '' \
+            'status is-interactive; and begin' \
+            "    bind \\cp '__cast_keybind_complete'" \
+            "    bind \\ce '__cast_keybind_explain'" \
+            'end' >$keybinds
     end
 
     __cast_gitignore_sync
@@ -139,13 +94,13 @@ function _cast_install --on-event cast_init_install
     echo "cast: installed. Set OPENAI_API_KEY or configure a custom provider. See https://github.com/Kaylebor/cast#setup"
 end
 
-# --- Update-time: sync .gitignore block, notify only ---
+# --- Update: sync .gitignore only, then notify ---
 function _cast_update --on-event cast_init_update
     __cast_gitignore_sync
-    echo "cast: updated. Review provider interface changes at https://github.com/Kaylebor/cast"
+    echo "cast: updated. Review provider changes at https://github.com/Kaylebor/cast"
 end
 
-# --- Uninstall-time: remove .gitignore block, erase universal variables ---
+# --- Uninstall: remove block, erase universal variables ---
 function _cast_uninstall --on-event cast_init_uninstall
     __cast_gitignore_remove
     set -e cast_complete_provider 2>/dev/null
@@ -154,57 +109,43 @@ function _cast_uninstall --on-event cast_init_uninstall
 end
 
 # --- Canonical provider builders ---
-# Each receives messages_json (jq {messages: [...]}) and debug flag.
-# They extract env vars, build payload, call __cast_chat.
-
 function __cast_openai --description "OpenAI-compatible API transport"
     # Arguments: messages_json debug
     set -q OPENAI_API_KEY; or begin
         echo "cast: OPENAI_API_KEY is not set." >&2
         return 1
     end
-
     set -l api_base (set -q OPENAI_API_BASE; and echo $OPENAI_API_BASE; or echo "api.openai.com")
     set -l model  (set -q OPENAI_MODEL;   and echo $OPENAI_MODEL;   or echo "gpt-4o-mini")
     set api_base (string replace -r '/$' '' -- $api_base)
-
     set -l payload (echo "$argv[1]" | jq --arg model "$model" '{model: $model, messages: .messages, temperature: 0.3}')
     __cast_openai_compat_chat "https://$api_base/v1/chat/completions" "$OPENAI_API_KEY" "$payload" "$argv[2]"
 end
 
 function __cast_synthetic --description "Synthetic API transport"
-    # Arguments: messages_json debug
     set -q SYNTHETIC_API_KEY; or begin
         echo "cast: SYNTHETIC_API_KEY is not set." >&2
         return 1
     end
-
     set -l api_base (set -q SYNTHETIC_API_BASE; and echo $SYNTHETIC_API_BASE; or echo "api.synthetic.new/openai")
     set -l model    (set -q SYNTHETIC_MODEL;    and echo $SYNTHETIC_MODEL;    or echo "hf:zai-org/GLM-4.7-Flash")
     set -l reasoning_effort (set -q SYNTHETIC_REASONING_EFFORT; and echo $SYNTHETIC_REASONING_EFFORT; or echo "low")
     set api_base (string replace -r '/$' '' -- $api_base)
-
     set -l payload (echo "$argv[1]" | jq --arg model "$model" --arg reasoning_effort "$reasoning_effort" '{model: $model, messages: .messages, temperature: 0.3, reasoning_effort: $reasoning_effort}')
     __cast_openai_compat_chat "https://$api_base/v1/chat/completions" "$SYNTHETIC_API_KEY" "$payload" "$argv[2]"
 end
 
 # --- Every-init: prompt autogeneration ---
-# User can drop new .md files anytime; we regenerate accessors on shell startup.
 function __cast_init_prompts --description "Generate prompt accessor functions from .md files"
     set -l builtin_dir (path dirname (status -f))/../functions/prompts
     set -l user_dir $__fish_config_dir/cast/prompts
-
-    if not test -d $user_dir
-        mkdir -p $user_dir
-    end
-
+    test -d $user_dir; or mkdir -p $user_dir
     if test -d $builtin_dir
         for md in $builtin_dir/*.md
             set -l name (basename $md .md)
             eval "function __cast_prompt_$name; cat $md; end"
         end
     end
-
     if test -d $user_dir
         for md in $user_dir/*.md
             set -l name (basename $md .md)
