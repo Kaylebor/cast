@@ -44,7 +44,9 @@ function __cast_gitignore_sync --description "Synchronize the cast ignore block 
         "functions/__cast_*.fish" \
         "functions/cast_complete.fish" \
         "functions/cast_explain.fish" \
+        "functions/cast_codify.fish" \
         "functions/cast_prompt.fish" \
+        "functions/__cast_chat.fish" \
         "functions/prompts/" \
         "cast/prompts/" \
         "functions/_cast_user_*.fish" \
