@@ -90,7 +90,7 @@ function __cast_gitignore_sync --description "Synchronize the cast ignore block 
 end
 
 # --- Install-time: create templates, set provider defaults, sync .gitignore ---
-function _cast_install --on-event cast_install
+function _cast_install --on-event cast_init_install
     set -l user_dir $__fish_config_dir/cast/prompts
     if not test -d $user_dir
         mkdir -p $user_dir
@@ -138,13 +138,13 @@ function _cast_install --on-event cast_install
 end
 
 # --- Update-time: sync .gitignore block, notify only ---
-function _cast_update --on-event cast_update
+function _cast_update --on-event cast_init_update
     __cast_gitignore_sync
     echo "cast: updated. Review provider interface changes at https://github.com/Kaylebor/cast"
 end
 
 # --- Uninstall-time: remove .gitignore block, erase universal variables ---
-function _cast_uninstall --on-event cast_uninstall
+function _cast_uninstall --on-event cast_init_uninstall
     __cast_gitignore_remove
     set -e cast_complete_provider 2>/dev/null
     set -e cast_explain_provider 2>/dev/null
