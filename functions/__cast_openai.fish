@@ -15,10 +15,10 @@ function __cast_openai_chat --argument prompt
         return 1
     end
 
-    # Build and send JSON safely
-    printf '%s' $prompt \
-        | jq -Rs --arg model "$model" '{model: $model, messages: [{role: "user", content: .}], temperature: 0.3}' \
-        | read -z json_payload
+    set -l json_payload (jq -n \
+        --arg model "$model" \
+        --arg content "$prompt" \
+        '{model: $model, messages: [{role: "user", content: $content}], temperature: 0.3}')
 
     set -l raw (curl -sS -m 30 \
         -H "Content-Type: application/json" \
@@ -26,7 +26,6 @@ function __cast_openai_chat --argument prompt
         -d "$json_payload" \
         "$url")
 
-    # Extract and check error
     if string match -q '*"error"*' -- $raw
         echo "cast: API returned an error." >&2
         echo $raw | jq -r '.error.message // .error // "Unknown error"' >&2
@@ -45,12 +44,12 @@ end
 
 function __cast_openai_complete --argument input
     set -l sys (cast_prompt complete 2>/dev/null; or echo "Complete or rewrite the following shell command. Output only the result, no explanations.")
-    set -l prompt "$sys\n\n$input"
+    set -l prompt (printf '%s\n\n%s' "$sys" "$input")
     __cast_openai_chat $prompt
 end
 
 function __cast_openai_explain --argument input
     set -l sys (cast_prompt explain 2>/dev/null; or echo "Explain the following shell command concisely.")
-    set -l prompt "$sys\n\n$input"
+    set -l prompt (printf '%s\n\n%s' "$sys" "$input")
     __cast_openai_chat $prompt
 end
