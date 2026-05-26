@@ -2,20 +2,18 @@
 # Runs on every shell startup for prompt autogen.
 # _cast_install / _cast_update / _cast_uninstall are Fisher event hooks.
 
-# --- Shared utility: sync .gitignore entries ---
-function __cast_gitignore_sync --description "Ensure cast entries exist in ~/.config/fish/.gitignore"
+# --- Shared utility: sync .gitignore block ---
+function __cast_gitignore_sync --description "Synchronize the cast ignore block in ~/.config/fish/.gitignore"
     set -l gitignore $__fish_config_dir/.gitignore
     if not test -f $gitignore
         return
     end
 
-    # Ensure file ends with a newline before appending
-    set -l last (tail -c 1 $gitignore | string collect -N)
-    if not string match -q "\n" -- $last
-        printf '\n' >>$gitignore
-    end
+    set -l block_start "# >>> cast managed"
+    set -l block_end   "# <<< cast managed"
 
-    set -l lines \
+    set -l block \
+        $block_start \
         "conf.d/cast_init.fish" \
         "functions/__cast_*.fish" \
         "functions/cast_complete.fish" \
@@ -23,11 +21,43 @@ function __cast_gitignore_sync --description "Ensure cast entries exist in ~/.co
         "functions/cast_prompt.fish" \
         "functions/prompts/" \
         "cast/prompts/" \
-        "functions/_cast_user_*.fish"
-    for line in $lines
-        if not grep -qxF $line $gitignore 2>/dev/null
-            printf '%s\n' $line >>$gitignore
+        "functions/_cast_user_*.fish" \
+        $block_end
+
+    # Check if block already exists by start+end delimiter
+    set -l has_start (grep -n -F $block_start $gitignore 2>/dev/null | head -1)
+    set -l has_end   (grep -n -F $block_end   $gitignore 2>/dev/null | head -1)
+
+    if test -n "$has_start" -a -n "$has_end"
+        # Block exists: extract current content between delimiters
+        set -l start_line (echo $has_start | cut -d: -f1)
+        set -l end_line   (echo $has_end   | cut -d: -f1)
+
+        # Read existing lines (excluding delimiters)
+        set -l existing (sed -n (math "$start_line + 1")","(math "$end_line - 1")"p" $gitignore 2>/dev/null)
+
+        # Compare with expected block (excluding delimiters)
+        set -l expected (printf '%s\n' $block[2..-2])
+        if test "$existing" = "$expected"
+            # Block matches — nothing to do
+            return
         end
+
+        # Block mismatched — replace it
+        # Delete old block (start through end line)
+        sed -i '' "$start_line,${end_line}d" $gitignore 2>/dev/null
+            ; or sed -i "$start_line,${end_line}d" $gitignore 2>/dev/null
+    end
+
+    # Ensure trailing newline before appending
+    set -l last (tail -c 1 $gitignore | string collect -N)
+    if not string match -q "\n" -- $last
+        printf '\n' >>$gitignore
+    end
+
+    # Append block
+    for line in $block
+        printf '%s\n' $line >>$gitignore
     end
 end
 
@@ -67,7 +97,7 @@ function _cast_install --on-event cast_install
     echo "cast: installed. Set OPENAI_API_KEY or configure a custom provider. See https://github.com/Kaylebor/cast#setup"
 end
 
-# --- Update-time: sync .gitignore, notify only ---
+# --- Update-time: sync .gitignore block, notify only ---
 function _cast_update --on-event cast_update
     __cast_gitignore_sync
     echo "cast: updated. Review provider interface changes at https://github.com/Kaylebor/cast"
