@@ -22,8 +22,10 @@ function __cast_gitignore_remove --description "Remove the cast ignore block fro
     set -l start_line (echo $has_start | cut -d: -f1)
     set -l end_line   (echo $has_end   | cut -d: -f1)
 
-    sed -i '' "$start_line,${end_line}d" $gitignore 2>/dev/null
-        ; or sed -i "$start_line,${end_line}d" $gitignore 2>/dev/null
+    begin
+        sed -i '' "$start_line,$end_line"d $gitignore 2>/dev/null
+    end
+    or sed -i "$start_line,$end_line"d $gitignore 2>/dev/null
 end
 
 function __cast_gitignore_sync --description "Synchronize the cast ignore block in ~/.config/fish/.gitignore"
@@ -57,7 +59,7 @@ function __cast_gitignore_sync --description "Synchronize the cast ignore block 
         set -l end_line   (echo $has_end   | cut -d: -f1)
 
         # Read existing lines (excluding delimiters)
-        set -l existing (sed -n (math "$start_line + 1")","(math "$end_line - 1")"p" $gitignore 2>/dev/null)
+        set -l existing (sed -n (math "$start_line + 1"),(math "$end_line - 1")p $gitignore 2>/dev/null)
 
         # Compare with expected block (excluding delimiters)
         set -l expected (printf '%s\n' $block[2..-2])
@@ -68,8 +70,10 @@ function __cast_gitignore_sync --description "Synchronize the cast ignore block 
 
         # Block mismatched — replace it
         # Delete old block (start through end line)
-        sed -i '' "$start_line,${end_line}d" $gitignore 2>/dev/null
-            ; or sed -i "$start_line,${end_line}d" $gitignore 2>/dev/null
+        begin
+            sed -i '' "$start_line,$end_line"d $gitignore 2>/dev/null
+        end
+        or sed -i "$start_line,$end_line"d $gitignore 2>/dev/null
     end
 
     # Ensure trailing newline before appending
