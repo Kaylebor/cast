@@ -168,7 +168,9 @@ set -g cast_complete_provider __cast_my_provider_complete
 set -g cast_explain_provider  __cast_my_provider_explain
 ```
 
-The `__cast_chat` transport is shared — it handles `curl`, error checking, and JSON parsing.
+The `__cast_openai_compat_chat` transport is shared — it handles `curl`, error checking, and JSON parsing for any provider that speaks the OpenAI chat completions format.
+
+For non-OpenAI providers (Anthropic Claude, Google Gemini, etc.), you would write your own transport instead of calling `__cast_openai_compat_chat`.
 
 ## Configuration reference
 

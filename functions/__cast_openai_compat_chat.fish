@@ -1,6 +1,6 @@
 # Shared HTTP + parse logic for OpenAI-compatible chat endpoints.
 # Arguments: url, api_key, payload_json, debug
-function __cast_chat --argument url api_key payload_json debug
+function __cast_openai_compat_chat --argument url api_key payload_json debug
     if not command -sq jq
         echo "cast: jq is required." >&2
         return 1
@@ -35,6 +35,5 @@ function __cast_chat --argument url api_key payload_json debug
         return 1
     end
 
-    # Do NOT add trailing newline — caller decides formatting
     printf '%s' $content
 end

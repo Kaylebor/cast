@@ -46,7 +46,7 @@ function __cast_gitignore_sync --description "Synchronize the cast ignore block 
         "functions/cast_explain.fish" \
         "functions/cast_codify.fish" \
         "functions/cast_prompt.fish" \
-        "functions/__cast_chat.fish" \
+        "functions/__cast_openai_compat_chat.fish" \
         "functions/prompts/" \
         "cast/prompts/" \
         "functions/_cast_user_*.fish" \
@@ -169,7 +169,7 @@ function __cast_openai --description "OpenAI-compatible API transport"
     set api_base (string replace -r '/$' '' -- $api_base)
 
     set -l payload (echo "$argv[1]" | jq --arg model "$model" '{model: $model, messages: .messages, temperature: 0.3}')
-    __cast_chat "https://$api_base/v1/chat/completions" "$OPENAI_API_KEY" "$payload" "$argv[2]"
+    __cast_openai_compat_chat "https://$api_base/v1/chat/completions" "$OPENAI_API_KEY" "$payload" "$argv[2]"
 end
 
 function __cast_synthetic --description "Synthetic API transport"
@@ -185,7 +185,7 @@ function __cast_synthetic --description "Synthetic API transport"
     set api_base (string replace -r '/$' '' -- $api_base)
 
     set -l payload (echo "$argv[1]" | jq --arg model "$model" --arg reasoning_effort "$reasoning_effort" '{model: $model, messages: .messages, temperature: 0.3, reasoning_effort: $reasoning_effort}')
-    __cast_chat "https://$api_base/v1/chat/completions" "$SYNTHETIC_API_KEY" "$payload" "$argv[2]"
+    __cast_openai_compat_chat "https://$api_base/v1/chat/completions" "$SYNTHETIC_API_KEY" "$payload" "$argv[2]"
 end
 
 # --- Every-init: prompt autogeneration ---
