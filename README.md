@@ -105,7 +105,7 @@ Command: ___
 
 ### Built-in provider helpers
 
-`__cast_openai_complete` and `__cast_openai_explain` are shipped as a default `curl`+`jq` implementation. You can also write your own:
+`cast` ships a few built-in `curl`+`jq` helpers. You can use any of them, or write your own.
 
 ```fish
 function _my_ollama_complete --argument input
@@ -118,6 +118,19 @@ end
 
 Then `set -g cast_complete_provider _my_ollama_complete`.
 
+### Synthetic
+
+A provider for [Synthetic](https://synthetic.new/) is included:
+
+```fish
+set -gx SYNTHETIC_API_KEY your-key
+set -gx SYNTHETIC_API_BASE api.synthetic.new/openai  # optional
+set -gx SYNTHETIC_MODEL hf:zai-org/GLM-4.7-Flash     # optional, default is fast/cheap
+
+set -g cast_complete_provider __cast_synthetic_complete
+set -g cast_explain_provider  __cast_synthetic_explain
+```
+
 ## Configuration reference
 
 | Variable | Default | Purpose |
@@ -127,6 +140,9 @@ Then `set -g cast_complete_provider _my_ollama_complete`.
 | `$OPENAI_API_KEY` | — | Required for built-in OpenAI helper |
 | `$OPENAI_API_BASE` | `api.openai.com` | Base URL for HTTP calls |
 | `$OPENAI_MODEL` | `gpt-4o-mini` | Model identifier |
+| `$SYNTHETIC_API_KEY` | — | Required for built-in Synthetic helper |
+| `$SYNTHETIC_API_BASE` | `api.synthetic.new/openai` | Base URL for Synthetic |
+| `$SYNTHETIC_MODEL` | `hf:zai-org/GLM-4.7-Flash` | Model identifier |
 
 ## Keybind helpers
 
