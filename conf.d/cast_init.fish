@@ -55,10 +55,17 @@ function __cast_init_gitignore --description "Add cast entries to .gitignore if 
         return
     end
 
+    # Ensure file ends with a newline before appending so we don't
+    # concatenate with the previous last line.
+    set -l last (tail -c 1 $gitignore | string collect -N)
+    if not string match -q "\n" -- $last
+        printf '\n' >>$gitignore
+    end
+
     set -l lines "cast/prompts/" "functions/_cast_user_*.fish"
     for line in $lines
         if not grep -qxF $line $gitignore 2>/dev/null
-            echo $line >>$gitignore
+            printf '%s\n' $line >>$gitignore
         end
     end
 end
