@@ -7,37 +7,32 @@ function __cast_gitignore_sync --description "Replace or append the cast block i
     set -l gitignore $__fish_config_dir/.gitignore
     not test -f $gitignore; and return
 
-    set -l tmp (mktemp)
-    printf '%s\n' '# >>> cast managed' \
-        'conf.d/cast_init.fish' \
-        'conf.d/cast_user_keybinds.fish' \
-        'functions/__cast_*.fish' \
-        'functions/cast_complete.fish' \
-        'functions/cast_explain.fish' \
-        'functions/cast_codify.fish' \
-        'functions/cast_prompt.fish' \
-        'functions/__cast_openai_compat_chat.fish' \
-        'functions/prompts/' \
-        'cast/prompts/' \
-        'functions/_cast_user_*.fish' \
-        '# <<< cast managed' >$tmp
+    set -l block (string collect -N '# >>> cast managed
+conf.d/cast_init.fish
+conf.d/cast_user_keybinds.fish
+functions/__cast_*.fish
+functions/cast_complete.fish
+functions/cast_explain.fish
+functions/cast_codify.fish
+functions/cast_prompt.fish
+functions/__cast_openai_compat_chat.fish
+functions/prompts/
+cast/prompts/
+functions/_cast_user_*.fish
+# <<< cast managed')
 
     if grep -qFx '# >>> cast managed' $gitignore 2>/dev/null
-        # Block exists: sed-replace in place. Append replacement at start line, delete range.
-        sed -i '' -e '/^# >>> cast managed$/,/^# <<< cast managed$/{
-            /^# >>> cast managed$/r '$tmp'
-            d
-        }' $gitignore 2>/dev/null
-        or sed -i -e '/^# >>> cast managed$/,/^# <<< cast managed$/{
-            /^# >>> cast managed$/r '$tmp'
-            d
-        }' $gitignore 2>/dev/null
+        awk -v blk="$block" '
+            /# >>> cast managed/,/# <<< cast managed/ {
+                if (/# >>> cast managed/) print blk
+                next
+            }
+            {print}
+        ' $gitignore >$gitignore.tmp
+        mv $gitignore.tmp $gitignore
     else
-        printf '\n' >>$gitignore
-        cat $tmp >>$gitignore
+        printf '%s\n' "$block" >>$gitignore
     end
-
-    rm $tmp
 end
 
 # --- Install: templates, defaults, .gitignore sync ---
