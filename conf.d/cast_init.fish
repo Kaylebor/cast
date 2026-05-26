@@ -40,6 +40,7 @@ function __cast_gitignore_sync --description "Synchronize the cast ignore block 
     set -l block \
         $block_start \
         "conf.d/cast_init.fish" \
+        "conf.d/cast_user_keybinds.fish" \
         "functions/__cast_*.fish" \
         "functions/cast_complete.fish" \
         "functions/cast_explain.fish" \
@@ -114,6 +115,18 @@ function _cast_install --on-event cast_install
         echo 'function _cast_user_explain --argument input' >>$template_explain
         echo '    __cast_openai_explain $input' >>$template_explain
         echo 'end' >>$template_explain
+    end
+
+    set -l keybinds $__fish_config_dir/conf.d/cast_user_keybinds.fish
+    if not test -f $keybinds
+        echo '# cast user keybinds' >$keybinds
+        echo '# You own this file; cast will never overwrite it.' >>$keybinds
+        echo '# Change the bindings below or remove this file entirely.' >>$keybinds
+        echo '' >>$keybinds
+        echo 'status is-interactive; and begin' >>$keybinds
+        echo "    bind \\cp '__cast_keybind_complete'" >>$keybinds
+        echo "    bind \\ce '__cast_keybind_explain'" >>$keybinds
+        echo 'end' >>$keybinds
     end
 
     __cast_gitignore_sync
