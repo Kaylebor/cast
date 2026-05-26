@@ -48,8 +48,8 @@ Reload your shell.
 
 | Feature | Default bind | Behaviour |
 |---------|--------------|-----------|
-| **Complete / Rewrite** | none — see Setup | Overwrites the current command line with the LLM result |
-| **Explain** | none | Prints an explanation of the current command |
+| **Complete / Rewrite** | `Ctrl+P` | Overwrites the current command line with the LLM result |
+| **Explain** | `Ctrl+E` | Prints an explanation of the current command |
 
 ## How it works
 
@@ -125,7 +125,8 @@ A provider for [Synthetic](https://synthetic.new/) is included:
 ```fish
 set -gx SYNTHETIC_API_KEY your-key
 set -gx SYNTHETIC_API_BASE api.synthetic.new/openai  # optional
-set -gx SYNTHETIC_MODEL hf:zai-org/GLM-4.7-Flash     # optional, default is fast/cheap
+set -gx SYNTHETIC_MODEL hf:zai-org/GLM-4.7-Flash     # optional
+set -gx SYNTHETIC_REASONING_EFFORT low               # optional: low | medium | high
 
 set -g cast_complete_provider __cast_synthetic_complete
 set -g cast_explain_provider  __cast_synthetic_explain
@@ -137,23 +138,25 @@ set -g cast_explain_provider  __cast_synthetic_explain
 |----------|---------|---------|
 | `$cast_complete_provider` | `_cast_user_complete` | Function name for completion |
 | `$cast_explain_provider` | `_cast_user_explain` | Function name for explanation |
+| `$cast_debug` | — | Set to any value to enable debug output on keybinds |
 | `$OPENAI_API_KEY` | — | Required for built-in OpenAI helper |
 | `$OPENAI_API_BASE` | `api.openai.com` | Base URL for HTTP calls |
 | `$OPENAI_MODEL` | `gpt-4o-mini` | Model identifier |
 | `$SYNTHETIC_API_KEY` | — | Required for built-in Synthetic helper |
 | `$SYNTHETIC_API_BASE` | `api.synthetic.new/openai` | Base URL for Synthetic |
 | `$SYNTHETIC_MODEL` | `hf:zai-org/GLM-4.7-Flash` | Model identifier |
+| `$SYNTHETIC_REASONING_EFFORT` | `low` | Reasoning depth: `low`, `medium`, `high` |
 
 ## Keybind helpers
 
-`cast` deliberately does **not** set any keybinds automatically. We provide thin wrappers you can bind yourself:
+On first install `cast` creates `~/.config/fish/conf.d/cast_user_keybinds.fish` with default keybinds:
 
 ```fish
 bind \cp '__cast_keybind_complete'
 bind \ce '__cast_keybind_explain'
 ```
 
-Or build your own:
+You own that file; edit or delete it as needed. You can also build your own bind:
 
 ```fish
 function my_custom_bind
@@ -177,6 +180,9 @@ fisher update Kaylebor/cast
 If `.gitignore` exists in your `~/.config/fish/`, `cast` appends entries once to keep generated files out of your dotfiles repo.
 
 ## Troubleshooting
+
+**Debug mode**
+Set `-g cast_debug` (any value) and `cast_complete` / `cast_explain` will print the raw request URL, payload, and response to stderr.
 
 **"Provider failed"**
 Run the provider function directly to see its raw output, then check your API key or network.
