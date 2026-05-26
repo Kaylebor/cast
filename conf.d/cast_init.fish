@@ -1,8 +1,29 @@
 # cast initialization
 # Runs on every shell startup for prompt autogen.
-# _cast_install handles one-time setup when Fisher emits the event.
+# _cast_install / _cast_update / _cast_uninstall are Fisher event hooks.
 
-# --- Install-time: create templates, gitignore, provider defaults ---
+# --- Shared utility: sync .gitignore entries ---
+function __cast_gitignore_sync --description "Ensure cast entries exist in ~/.config/fish/.gitignore"
+    set -l gitignore $__fish_config_dir/.gitignore
+    if not test -f $gitignore
+        return
+    end
+
+    # Ensure file ends with a newline before appending
+    set -l last (tail -c 1 $gitignore | string collect -N)
+    if not string match -q "\n" -- $last
+        printf '\n' >>$gitignore
+    end
+
+    set -l lines "cast/prompts/" "functions/_cast_user_*.fish"
+    for line in $lines
+        if not grep -qxF $line $gitignore 2>/dev/null
+            printf '%s\n' $line >>$gitignore
+        end
+    end
+end
+
+# --- Install-time: create templates, set provider defaults, sync .gitignore ---
 function _cast_install --on-event cast_install
     set -l user_dir $__fish_config_dir/cast/prompts
     if not test -d $user_dir
@@ -30,31 +51,17 @@ function _cast_install --on-event cast_install
         echo 'end' >>$template_explain
     end
 
-    # .gitignore hygiene (newline guard)
-    set -l gitignore $__fish_config_dir/.gitignore
-    if test -f $gitignore
-        set -l last (tail -c 1 $gitignore | string collect -N)
-        if not string match -q "\n" -- $last
-            printf '\n' >>$gitignore
-        end
+    __cast_gitignore_sync
 
-        set -l lines "cast/prompts/" "functions/_cast_user_*.fish"
-        for line in $lines
-            if not grep -qxF $line $gitignore 2>/dev/null
-                printf '%s\n' $line >>$gitignore
-            end
-        end
-    end
-
-    # Set universal provider defaults only if not already configured
     set -q cast_complete_provider; or set -U cast_complete_provider _cast_user_complete
     set -q cast_explain_provider;  or set -U cast_explain_provider _cast_user_explain
 
     echo "cast: installed. Set OPENAI_API_KEY or configure a custom provider. See https://github.com/Kaylebor/cast#setup"
 end
 
-# --- Update-time: notify only ---
+# --- Update-time: sync .gitignore, notify only ---
 function _cast_update --on-event cast_update
+    __cast_gitignore_sync
     echo "cast: updated. Review provider interface changes at https://github.com/Kaylebor/cast"
 end
 
