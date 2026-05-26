@@ -41,5 +41,5 @@ function cast_explain --description "Explain the given command via LLM"
         return 1
     end
 
-    printf '%s\n' $output
+    printf '%s' $output
 end

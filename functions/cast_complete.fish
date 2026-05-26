@@ -41,5 +41,5 @@ function cast_complete --description "Replace current line with LLM completion"
         return 1
     end
 
-    printf '%s\n' $output
+    printf '%s' $output
 end

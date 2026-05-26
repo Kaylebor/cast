@@ -35,5 +35,6 @@ function __cast_chat --argument url api_key payload_json debug
         return 1
     end
 
-    printf '%s\n' $content
+    # Do NOT add trailing newline — caller decides formatting
+    printf '%s' $content
 end

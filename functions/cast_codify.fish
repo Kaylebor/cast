@@ -7,7 +7,6 @@ function cast_codify --description "Convert a natural-language description into 
         end
     end
 
-    # Strip leading # if present (codify signal typed at prompt)
     set input (string replace -r '^#\s*' '' -- "$input")
 
     set -l provider $cast_codify_provider
@@ -27,7 +26,6 @@ function cast_codify --description "Convert a natural-language description into 
 
     set -l sys (cast_prompt codify 2>/dev/null; or echo "Respond with a fish shell command which carries out the user's task. Do not explain. Do not use markdown formatting. Only respond with a single line.")
 
-    # Few-shot examples passed as jq --arg to avoid $variable conflicts
     set -l messages (jq -n \
         --arg sys "$sys" \
         --arg input "$input" \
@@ -64,5 +62,5 @@ function cast_codify --description "Convert a natural-language description into 
         return 1
     end
 
-    printf '%s\n' $output
+    printf '%s' $output
 end
