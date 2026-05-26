@@ -7,6 +7,12 @@ function cast_complete --description "Replace current line with LLM completion"
         end
     end
 
+    # Detect codify signal: natural-language task disguised as a comment
+    if string match -r '^#\\s*' -- $buffer
+        cast_codify $buffer $debug
+        return $status
+    end
+
     if test -z "$cast_complete_provider"
         echo "cast: \$cast_complete_provider not set. Set it in your config.fish (e.g. set -g cast_complete_provider _cast_user_complete). See https://github.com/Kaylebor/cast#setup" >&2
         return 1
@@ -23,7 +29,7 @@ function cast_complete --description "Replace current line with LLM completion"
     if test $code -ne 0
         echo "cast: provider '$cast_complete_provider' failed (exit $code)." >&2
         echo "---" >&2
-        printf '%s\n' $output >&2
+        printf '%s\\n' $output >&2
         echo "---" >&2
         echo "See troubleshooting: https://github.com/Kaylebor/cast#troubleshooting" >&2
         return $code
@@ -34,5 +40,5 @@ function cast_complete --description "Replace current line with LLM completion"
         return 1
     end
 
-    printf '%s\n' $output
+    printf '%s\\n' $output
 end
