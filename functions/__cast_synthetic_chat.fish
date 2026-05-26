@@ -23,24 +23,3 @@ function __cast_synthetic_chat --argument messages_json debug
 
     __cast_chat "$url" "$SYNTHETIC_API_KEY" "$payload" "$debug"
 end
-
-function __cast_synthetic_complete
-    set -l messages $argv[1]
-    set -l debug false
-    test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_synthetic_chat "$messages" "$debug"
-end
-
-function __cast_synthetic_explain
-    set -l messages $argv[1]
-    set -l debug false
-    test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_synthetic_chat "$messages" "$debug"
-end
-
-function __cast_synthetic_codify
-    set -l messages $argv[1]
-    set -l debug false
-    test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_synthetic_chat "$messages" "$debug"
-end

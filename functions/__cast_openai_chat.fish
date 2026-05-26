@@ -21,24 +21,3 @@ function __cast_openai_chat --argument messages_json debug
 
     __cast_chat "$url" "$OPENAI_API_KEY" "$payload" "$debug"
 end
-
-function __cast_openai_complete
-    set -l messages $argv[1]
-    set -l debug false
-    test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_openai_chat "$messages" "$debug"
-end
-
-function __cast_openai_explain
-    set -l messages $argv[1]
-    set -l debug false
-    test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_openai_chat "$messages" "$debug"
-end
-
-function __cast_openai_codify
-    set -l messages $argv[1]
-    set -l debug false
-    test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_openai_chat "$messages" "$debug"
-end
