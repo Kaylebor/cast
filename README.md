@@ -132,6 +132,44 @@ set -g cast_complete_provider __cast_synthetic_complete
 set -g cast_explain_provider  __cast_synthetic_explain
 ```
 
+### Adding a new provider
+
+Any OpenAI-compatible endpoint is supported. Add a new _canonical builder_ in your own `conf.d/` or `functions/`:
+
+```fish
+function __cast_my_provider --description "My custom LLM API"
+    set -q MY_API_KEY; or begin
+        echo "cast: MY_API_KEY is not set." >&2
+        return 1
+    end
+    set -l api_base (set -q MY_API_BASE; and echo $MY_API_BASE; or echo "api.example.com")
+    set -l model  (set -q MY_MODEL; and echo $MY_MODEL; or echo "gpt-4o-mini")
+    set api_base (string replace -r '/$' '' -- $api_base)
+
+    set -l payload (echo "$argv[1]" | jq --arg model "$model" '{model: $model, messages: .messages, temperature: 0.3}')
+    __cast_chat "https://$api_base/v1/chat/completions" "$MY_API_KEY" "$payload" "$argv[2]"
+end
+```
+
+Then create three thin aliases for autoload:
+
+```fish
+# functions/__cast_my_provider_complete.fish
+function __cast_my_provider_complete
+    __cast_my_provider $argv
+end
+# Same for explain and codify
+```
+
+Finally set the provider variable:
+
+```fish
+set -g cast_complete_provider __cast_my_provider_complete
+set -g cast_explain_provider  __cast_my_provider_explain
+```
+
+The `__cast_chat` transport is shared — it handles `curl`, error checking, and JSON parsing.
+
 ## Configuration reference
 
 | Variable | Default | Purpose |
