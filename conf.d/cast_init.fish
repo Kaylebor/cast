@@ -153,6 +153,41 @@ function _cast_uninstall --on-event cast_init_uninstall
     # Intentionally NOT removing user-created files under functions/ or cast/prompts/
 end
 
+# --- Canonical provider builders ---
+# Each receives messages_json (jq {messages: [...]}) and debug flag.
+# They extract env vars, build payload, call __cast_chat.
+
+function __cast_openai --description "OpenAI-compatible API transport"
+    # Arguments: messages_json debug
+    set -q OPENAI_API_KEY; or begin
+        echo "cast: OPENAI_API_KEY is not set." >&2
+        return 1
+    end
+
+    set -l api_base (set -q OPENAI_API_BASE; and echo $OPENAI_API_BASE; or echo "api.openai.com")
+    set -l model  (set -q OPENAI_MODEL;   and echo $OPENAI_MODEL;   or echo "gpt-4o-mini")
+    set api_base (string replace -r '/$' '' -- $api_base)
+
+    set -l payload (echo "$argv[1]" | jq --arg model "$model" '{model: $model, messages: .messages, temperature: 0.3}')
+    __cast_chat "https://$api_base/v1/chat/completions" "$OPENAI_API_KEY" "$payload" "$argv[2]"
+end
+
+function __cast_synthetic --description "Synthetic API transport"
+    # Arguments: messages_json debug
+    set -q SYNTHETIC_API_KEY; or begin
+        echo "cast: SYNTHETIC_API_KEY is not set." >&2
+        return 1
+    end
+
+    set -l api_base (set -q SYNTHETIC_API_BASE; and echo $SYNTHETIC_API_BASE; or echo "api.synthetic.new/openai")
+    set -l model    (set -q SYNTHETIC_MODEL;    and echo $SYNTHETIC_MODEL;    or echo "hf:zai-org/GLM-4.7-Flash")
+    set -l reasoning_effort (set -q SYNTHETIC_REASONING_EFFORT; and echo $SYNTHETIC_REASONING_EFFORT; or echo "low")
+    set api_base (string replace -r '/$' '' -- $api_base)
+
+    set -l payload (echo "$argv[1]" | jq --arg model "$model" --arg reasoning_effort "$reasoning_effort" '{model: $model, messages: .messages, temperature: 0.3, reasoning_effort: $reasoning_effort}')
+    __cast_chat "https://$api_base/v1/chat/completions" "$SYNTHETIC_API_KEY" "$payload" "$argv[2]"
+end
+
 # --- Every-init: prompt autogeneration ---
 # User can drop new .md files anytime; we regenerate accessors on shell startup.
 function __cast_init_prompts --description "Generate prompt accessor functions from .md files"
