@@ -15,7 +15,15 @@ function __cast_gitignore_sync --description "Ensure cast entries exist in ~/.co
         printf '\n' >>$gitignore
     end
 
-    set -l lines "cast/prompts/" "functions/_cast_user_*.fish"
+    set -l lines \
+        "conf.d/cast_init.fish" \
+        "functions/__cast_*.fish" \
+        "functions/cast_complete.fish" \
+        "functions/cast_explain.fish" \
+        "functions/cast_prompt.fish" \
+        "functions/prompts/" \
+        "cast/prompts/" \
+        "functions/_cast_user_*.fish"
     for line in $lines
         if not grep -qxF $line $gitignore 2>/dev/null
             printf '%s\n' $line >>$gitignore
