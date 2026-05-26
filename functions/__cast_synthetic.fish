@@ -1,8 +1,4 @@
-function __cast_synthetic_chat
-    set -l prompt $argv[1]
-    set -l debug false
-    test (count $argv) -ge 2; and set debug $argv[2]
-
+function __cast_synthetic_chat --argument messages_json debug
     set -q SYNTHETIC_API_KEY; or begin
         echo "cast: SYNTHETIC_API_KEY is not set." >&2
         return 1
@@ -20,58 +16,31 @@ function __cast_synthetic_chat
         return 1
     end
 
-    set -l json_payload (jq -n \
+    set -l payload (echo "$messages_json" | jq \
         --arg model "$model" \
-        --arg content "$prompt" \
         --arg reasoning_effort "$reasoning_effort" \
-        '{model: $model, messages: [{role: "user", content: $content}], temperature: 0.3, reasoning_effort: $reasoning_effort}')
+        '{model: $model, messages: .messages, temperature: 0.3, reasoning_effort: $reasoning_effort}')
 
-    if test "$debug" = true
-        echo "[cast debug] url: $url" >&2
-        echo "[cast debug] model: $model" >&2
-        echo "[cast debug] reasoning_effort: $reasoning_effort" >&2
-        echo "[cast debug] payload: $json_payload" >&2
-    end
-
-    set -l raw (curl -sS -m 60 \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $SYNTHETIC_API_KEY" \
-        -d "$json_payload" \
-        "$url")
-
-    if test "$debug" = true
-        echo "[cast debug] raw response:" >&2
-        echo "$raw" >&2
-    end
-
-    if string match -q '*"error"*' -- $raw
-        echo "cast: API returned an error." >&2
-        echo $raw | jq -r '.error.message // .error // "Unknown error"' >&2
-        return 1
-    end
-
-    set -l content (echo $raw | jq -r '.choices[0].message.content // empty')
-    if test -z "$content"
-        echo "cast: empty response from API." >&2
-        echo $raw | jq . >&2
-        return 1
-    end
-
-    printf '%s\n' $content
+    __cast_chat "$url" "$SYNTHETIC_API_KEY" "$payload" "$debug"
 end
 
 function __cast_synthetic_complete
-    set -l sys (cast_prompt complete 2>/dev/null; or echo "Complete or rewrite the following shell command. Output only the result, no explanations.")
-    set -l prompt (printf '%s\n\n%s' "$sys" "$argv[1]")
+    set -l messages $argv[1]
     set -l debug false
     test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_synthetic_chat $prompt $debug
+    __cast_synthetic_chat "$messages" "$debug"
 end
 
 function __cast_synthetic_explain
-    set -l sys (cast_prompt explain 2>/dev/null; or echo "Explain the following shell command concisely.")
-    set -l prompt (printf '%s\n\n%s' "$sys" "$argv[1]")
+    set -l messages $argv[1]
     set -l debug false
     test (count $argv) -ge 2; and set debug $argv[2]
-    __cast_synthetic_chat $prompt $debug
+    __cast_synthetic_chat "$messages" "$debug"
+end
+
+function __cast_synthetic_codify
+    set -l messages $argv[1]
+    set -l debug false
+    test (count $argv) -ge 2; and set debug $argv[2]
+    __cast_synthetic_chat "$messages" "$debug"
 end

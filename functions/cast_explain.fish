@@ -1,5 +1,5 @@
 function cast_explain --description "Explain the given command via LLM"
-    set -l buffer $argv[1]
+    set -l input $argv[1]
     set -l debug false
     for arg in $argv[2..-1]
         if test "$arg" = --debug
@@ -8,7 +8,7 @@ function cast_explain --description "Explain the given command via LLM"
     end
 
     if test -z "$cast_explain_provider"
-        echo "cast: \$cast_explain_provider not set. Set it in your config.fish (e.g. set -g cast_explain_provider _cast_user_explain). See https://github.com/Kaylebor/cast#setup" >&2
+        echo "cast: \$cast_explain_provider not set." >&2
         return 1
     end
 
@@ -17,7 +17,14 @@ function cast_explain --description "Explain the given command via LLM"
         return 127
     end
 
-    set -l output ($cast_explain_provider $buffer $debug 2>&1)
+    set -l sys (cast_prompt explain 2>/dev/null; or echo "Explain the following shell command concisely.")
+
+    set -l messages (jq -n \
+        --arg sys "$sys" \
+        --arg input "$input" \
+        '{messages: [{role: "system", content: $sys}, {role: "user", content: $input}]}')
+
+    set -l output ($cast_explain_provider "$messages" "$debug" 2>&1)
     set -l code $status
 
     if test $code -ne 0
