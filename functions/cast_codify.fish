@@ -27,17 +27,24 @@ function cast_codify --description "Convert a natural-language description into 
 
     set -l sys (cast_prompt codify 2>/dev/null; or echo "Respond with a fish shell command which carries out the user's task. Do not explain. Do not use markdown formatting. Only respond with a single line.")
 
+    # Few-shot examples passed as jq --arg to avoid $variable conflicts
     set -l messages (jq -n \
         --arg sys "$sys" \
         --arg input "$input" \
+        --arg u1 "List all disks on the system" \
+        --arg a1 "df -h" \
+        --arg u2 "Pull the Alpine 3 container from DockerHub" \
+        --arg a2 "docker pull alpine:3" \
+        --arg u3 "Substitute all occurrences of \"foo\" with \"bar\"" \
+        --arg a3 'sed -i "s/foo/bar/g" $file' \
         '{messages: [
             {role: "system", content: $sys},
-            {role: "user", content: "List all disks on the system"},
-            {role: "assistant", content: "df -h"},
-            {role: "user", content: "Pull the Alpine 3 container from DockerHub"},
-            {role: "assistant", content: "docker pull alpine:3"},
-            {role: "user", content: "Substitute all occurrences of \"foo\" with \"bar\""},
-            {role: "assistant", content: "sed -i \"s/foo/bar/g\" \$file"},
+            {role: "user", content: $u1},
+            {role: "assistant", content: $a1},
+            {role: "user", content: $u2},
+            {role: "assistant", content: $a2},
+            {role: "user", content: $u3},
+            {role: "assistant", content: $a3},
             {role: "user", content: $input}
         ]}')
 
