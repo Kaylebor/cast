@@ -2,7 +2,30 @@
 # Runs on every shell startup for prompt autogen.
 # _cast_install / _cast_update / _cast_uninstall are Fisher event hooks.
 
-# --- Shared utility: sync .gitignore block ---
+# --- Shared utilities for .gitignore block management ---
+function __cast_gitignore_remove --description "Remove the cast ignore block from ~/.config/fish/.gitignore"
+    set -l gitignore $__fish_config_dir/.gitignore
+    if not test -f $gitignore
+        return
+    end
+
+    set -l block_start "# >>> cast managed"
+    set -l block_end   "# <<< cast managed"
+
+    set -l has_start (grep -n -F $block_start $gitignore 2>/dev/null | head -1)
+    set -l has_end   (grep -n -F $block_end   $gitignore 2>/dev/null | head -1)
+
+    if test -z "$has_start" -o -z "$has_end"
+        return
+    end
+
+    set -l start_line (echo $has_start | cut -d: -f1)
+    set -l end_line   (echo $has_end   | cut -d: -f1)
+
+    sed -i '' "$start_line,${end_line}d" $gitignore 2>/dev/null
+        ; or sed -i "$start_line,${end_line}d" $gitignore 2>/dev/null
+end
+
 function __cast_gitignore_sync --description "Synchronize the cast ignore block in ~/.config/fish/.gitignore"
     set -l gitignore $__fish_config_dir/.gitignore
     if not test -f $gitignore
@@ -103,8 +126,9 @@ function _cast_update --on-event cast_update
     echo "cast: updated. Review provider interface changes at https://github.com/Kaylebor/cast"
 end
 
-# --- Uninstall-time: erase universal variables ---
+# --- Uninstall-time: remove .gitignore block, erase universal variables ---
 function _cast_uninstall --on-event cast_uninstall
+    __cast_gitignore_remove
     set -e cast_complete_provider 2>/dev/null
     set -e cast_explain_provider 2>/dev/null
     # Intentionally NOT removing user-created files under functions/ or cast/prompts/
