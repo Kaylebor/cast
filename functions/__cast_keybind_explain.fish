@@ -1,6 +1,8 @@
 function __cast_keybind_explain
     set -l buf (commandline -b | string collect)
-    set -l result (cast_explain $buf 2>/dev/null)
+    set -l debug
+    set -q cast_debug; and set debug --debug
+    set -l result (cast_explain $buf $debug 2>/dev/null)
     if test $status -ne 0 -o -z "$result"
         return
     end

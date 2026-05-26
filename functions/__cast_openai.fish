@@ -1,4 +1,8 @@
-function __cast_openai_chat --argument prompt
+function __cast_openai_chat
+    set -l prompt $argv[1]
+    set -l debug false
+    test (count $argv) -ge 2; and set debug $argv[2]
+
     set -q OPENAI_API_KEY; or begin
         echo "cast: OPENAI_API_KEY is not set." >&2
         return 1
@@ -20,11 +24,21 @@ function __cast_openai_chat --argument prompt
         --arg content "$prompt" \
         '{model: $model, messages: [{role: "user", content: $content}], temperature: 0.3}')
 
+    if test "$debug" = true
+        echo "[cast debug] url: $url" >&2
+        echo "[cast debug] payload: $json_payload" >&2
+    end
+
     set -l raw (curl -sS -m 30 \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $OPENAI_API_KEY" \
         -d "$json_payload" \
         "$url")
+
+    if test "$debug" = true
+        echo "[cast debug] raw response:" >&2
+        echo "$raw" >&2
+    end
 
     if string match -q '*"error"*' -- $raw
         echo "cast: API returned an error." >&2
@@ -42,14 +56,18 @@ function __cast_openai_chat --argument prompt
     printf '%s\n' $content
 end
 
-function __cast_openai_complete --argument input
+function __cast_openai_complete
     set -l sys (cast_prompt complete 2>/dev/null; or echo "Complete or rewrite the following shell command. Output only the result, no explanations.")
-    set -l prompt (printf '%s\n\n%s' "$sys" "$input")
-    __cast_openai_chat $prompt
+    set -l prompt (printf '%s\n\n%s' "$sys" "$argv[1]")
+    set -l debug false
+    test (count $argv) -ge 2; and set debug $argv[2]
+    __cast_openai_chat $prompt $debug
 end
 
-function __cast_openai_explain --argument input
+function __cast_openai_explain
     set -l sys (cast_prompt explain 2>/dev/null; or echo "Explain the following shell command concisely.")
-    set -l prompt (printf '%s\n\n%s' "$sys" "$input")
-    __cast_openai_chat $prompt
+    set -l prompt (printf '%s\n\n%s' "$sys" "$argv[1]")
+    set -l debug false
+    test (count $argv) -ge 2; and set debug $argv[2]
+    __cast_openai_chat $prompt $debug
 end

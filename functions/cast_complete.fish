@@ -1,4 +1,12 @@
-function cast_complete --argument buffer --description "Replace current line with LLM completion"
+function cast_complete --description "Replace current line with LLM completion"
+    set -l buffer $argv[1]
+    set -l debug false
+    for arg in $argv[2..-1]
+        if test "$arg" = --debug
+            set debug true
+        end
+    end
+
     if test -z "$cast_complete_provider"
         echo "cast: \$cast_complete_provider not set. Set it in your config.fish (e.g. set -g cast_complete_provider _cast_user_complete). See https://github.com/Kaylebor/cast#setup" >&2
         return 1
@@ -9,7 +17,7 @@ function cast_complete --argument buffer --description "Replace current line wit
         return 127
     end
 
-    set -l output ($cast_complete_provider $buffer 2>&1)
+    set -l output ($cast_complete_provider $buffer $debug 2>&1)
     set -l code $status
 
     if test $code -ne 0
